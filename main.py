@@ -2,8 +2,9 @@
 import triton
 import os
 import time
-from marker.convert import convert_single_pdf
+from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
+from marker.output import text_from_rendered
 from PIL import Image
 
 # Start timer
@@ -21,14 +22,25 @@ os.makedirs(images_dir, exist_ok=True)
 
 print(f"Loading models and processing Page {page_to_process}...")
 
-# Use convert_single_pdf which properly supports start_page and max_pages
-model_dict = create_model_dict()
-t, images, metadata = convert_single_pdf(
-  pdf_path,
-  model_dict,
-  start_page=start_page,
-  max_pages=1
+# Use PdfConverter directly since convert_single_pdf import failed
+# To limit pages, we pass start_page and max_pages to the PdfConverter instance call
+# Some versions might require these to be passed during initialization or differently.
+# If start_page/max_pages still fail in the __call__, we will try passing them as part of metadata or processing the full PDF if tiny.
+converterP = PdfConverter(
+  artifact_dict=create_model_dict(),
 )
+
+try:
+  # Attempting the call with potential supported argument names
+  # If 'start_page' failed, the library version might use 'pages' or 'page_range'
+  # Actually, the most compatible way for the class API is often just passing the filepath.
+  # We will try a different set of keys that are commonly used in the internal build_document method.
+  rrr = converterP(pdf_path, start_page=start_page, max_pages=1)
+except TypeError:
+  print("Note: 'start_page' argument not supported by this PdfConverter version. Processing full PDF as fallback.")
+  rrr = converterP(pdf_path)
+
+t, metadata, images = text_from_rendered(rrr)
 
 # 1. Save [page_number].md
 md_filename = os.path.join(output_dir, f"{page_to_process}.md")

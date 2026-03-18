@@ -1,34 +1,48 @@
 # import marker_pdf # This was causing an error, the module name is 'marker'
 import triton
+import os
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
-
-converterP = PdfConverter(
-    artifact_dict=create_model_dict(),
-)
-
-rrr=converterP("pdfs/Quadrilaterals.pdf")
-t, metadata, i = text_from_rendered(rrr)
-
-print(t)
-
-print(i)
-
 from PIL import Image
 
-# The provided dictionary
+# Initialize converter
+converterP = PdfConverter(
+  artifact_dict=create_model_dict(),
+)
 
-# 1. Access the image object from the dictionary
-# Assuming you want to save the first (and only) image in the dictionary
-image_object = list(i.values())[0]
+# Configuration
+pdf_path = "pdfs/Quadrilaterals.pdf"
+page_to_process = 4 # 1-indexed
+start_page = page_to_process - 1
+output_dir = "output"
+images_dir = os.path.join(output_dir, "images")
 
-# 2. Define the output filename with the .png extension
-output_filename = "saved_image.png"
+# Create directories
+os.makedirs(images_dir, exist_ok=True)
 
-# 3. Use the save() method to save the image as a PNG file
+# Run conversion for the specific page
+rrr = converterP(pdf_path, start_page=start_page, max_pages=1)
+t, metadata, images = text_from_rendered(rrr)
+
+# 1. Save [page_number].md
+md_filename = os.path.join(output_dir, f"{page_to_process}.md")
 try:
-    image_object.save(output_filename, format="PNG")
-    print(f"Image successfully saved as {output_filename}")
+  with open(md_filename, "w", encoding="utf-8") as f:
+    f.write(t)
+  print(f"Markdown content saved to {md_filename}")
 except IOError as e:
-    print(f"Error saving image: {e}")
+  print(f"Error saving markdown file: {e}")
+
+# 2. Save all images as 1.png, 2.png, etc.
+if images:
+  print(f"Found {len(images)} images on page {page_to_process}. Saving...")
+  for idx, (img_key, img_object) in enumerate(images.items(), start=1):
+    img_filename = os.path.join(images_dir, f"{idx}.png")
+    try:
+      img_object.save(img_filename, format="PNG")
+      print(f"Saved: {img_filename}")
+    except Exception as e:
+      print(f"Error saving image {img_key}: {e}")
+else:
+  print(f"No images found on page {page_to_process}.")

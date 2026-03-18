@@ -2,18 +2,12 @@
 import triton
 import os
 import time
-from marker.converters.pdf import PdfConverter
+from marker.convert import convert_single_pdf
 from marker.models import create_model_dict
-from marker.output import text_from_rendered
 from PIL import Image
 
 # Start timer
 start_time = time.time()
-
-# Initialize converter
-converterP = PdfConverter(
-  artifact_dict=create_model_dict(),
-)
 
 # Configuration
 pdf_path = "pdfs/Quadrilaterals.pdf"
@@ -25,9 +19,16 @@ images_dir = os.path.join(output_dir, "images")
 # Create directories
 os.makedirs(images_dir, exist_ok=True)
 
-# Run conversion for the specific page
-rrr = converterP(pdf_path, start_page=start_page, max_pages=1)
-t, metadata, images = text_from_rendered(rrr)
+print(f"Loading models and processing Page {page_to_process}...")
+
+# Use convert_single_pdf which properly supports start_page and max_pages
+model_dict = create_model_dict()
+t, images, metadata = convert_single_pdf(
+  pdf_path,
+  model_dict,
+  start_page=start_page,
+  max_pages=1
+)
 
 # 1. Save [page_number].md
 md_filename = os.path.join(output_dir, f"{page_to_process}.md")
@@ -40,7 +41,7 @@ except IOError as e:
 
 # 2. Save all images as 1.png, 2.png, etc.
 if images:
-  print(f"Found {len(images)} images on page {page_to_process}. Saving...")
+  print(f"Found {len(images)} images. Saving...")
   for idx, (img_key, img_object) in enumerate(images.items(), start=1):
     img_filename = os.path.join(images_dir, f"{idx}.png")
     try:

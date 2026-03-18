@@ -1,10 +1,14 @@
 # import marker_pdf # This was causing an error, the module name is 'marker'
 import triton
 import os
+import time
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from PIL import Image
+
+# Start timer
+start_time = time.time()
 
 # Initialize converter
 converterP = PdfConverter(
@@ -46,3 +50,8 @@ if images:
       print(f"Error saving image {img_key}: {e}")
 else:
   print(f"No images found on page {page_to_process}.")
+
+# End timer and print elapsed time
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"\nTotal elapsed time: {elapsed_time:.2f} seconds")

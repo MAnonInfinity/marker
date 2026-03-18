@@ -8,7 +8,7 @@ converterP = PdfConverter(
     artifact_dict=create_model_dict(),
 )
 
-rrr=converterP("Quadrilaterals.pdf")
+rrr=converterP("pdfs/Quadrilaterals.pdf")
 t, metadata, i = text_from_rendered(rrr)
 
 print(t)

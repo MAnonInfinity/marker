@@ -3,10 +3,11 @@ import time
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
+from marker.config.parser import ConfigParser
 from PIL import Image
 
 # --- CONFIGURATION ---
-# Set to a number (e.g., 4) to process a specific page. 
+# Set to a number (1-indexed, e.g., 4) to process a specific page.
 # Set to None to process the full PDF.
 PAGE_NUMBER = 4 
 
@@ -18,25 +19,30 @@ images_dir = os.path.join(output_dir, "images")
 # Start timer
 start_time = time.time()
 
-# Construct the marker config based on PAGE_NUMBER
-marker_config = {}
+# We use the official ConfigParser to ensure correct mapping for the library
+# This ensures that 'page_range' is formatted exactly how the library expects it.
+options = {}
 if PAGE_NUMBER is not None:
-  marker_config = {
-    "start_page": PAGE_NUMBER - 1, # 0-indexed for marker
-    "max_pages": 1
-  }
+  options["page_range"] = str(PAGE_NUMBER - 1)
   md_filename = os.path.join(output_dir, f"{PAGE_NUMBER}.md")
-  print(f"Mode: Single Page (Page {PAGE_NUMBER})")
 else:
   md_filename = os.path.join(output_dir, "full_pdf.md")
-  print("Mode: Full PDF")
+
+config_parser = ConfigParser(options)
+marker_config = config_parser.generate_config_dict()
 
 # Create directories
 os.makedirs(images_dir, exist_ok=True)
 
+# Important for debugging in Colab
+if PAGE_NUMBER is not None:
+  print(f"Mode: Single Page (Page {PAGE_NUMBER}) - Requested index: {PAGE_NUMBER - 1}")
+else:
+  print("Mode: Full PDF")
+
 print("Loading models and starting conversion...")
 
-# Initialize converter with conditional config
+# Initialize converter with the library-standard config dict
 converterP = PdfConverter(
   artifact_dict=create_model_dict(),
   config=marker_config

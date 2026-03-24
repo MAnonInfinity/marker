@@ -37,7 +37,7 @@ else:
 # ----------------------------------------
 
 # --- CONFIGURATION ---
-PAGE_NUMBER = 4
+PAGE_NUMBER = None
 pdf_path = "pdfs/20240909_Hilton.pdf"
 output_dir = "output"
 images_dir = os.path.join(output_dir, "images")

@@ -45,7 +45,8 @@ images_dir = os.path.join(output_dir, "images")
 
 # Official Config Mapping
 options = {
-  "batch_multiplier": 4,
+  "batch_multiplier": 4,             # General GPU batch boost
+  "TableProcessor_recognition_batch_size": 192,  # Table cell OCR: default 48, push it up (T4 has 16GB)
 }
 if PAGE_NUMBER is not None:
   options["page_range"] = str(PAGE_NUMBER - 1)
@@ -68,6 +69,55 @@ models = create_model_dict()
 # 2. START CONVERSION (Timer starts here)
 print("🤖 Models loaded. Starting actual conversion run...")
 conversion_start_time = time.time()
+
+# --- Per-step timing patch ---
+from marker.builders.document import DocumentBuilder
+from marker.builders.layout import LayoutBuilder
+from marker.builders.line import LineBuilder
+from marker.builders.ocr import OcrBuilder
+from marker.builders.structure import StructureBuilder
+
+_orig_build_document = PdfConverter.build_document
+
+def _timed_build_document(self, filepath):
+  from marker.providers.registry import provider_from_filepath
+  step_times = {}
+
+  provider_cls = provider_from_filepath(filepath)
+  provider = provider_cls(filepath, self.config)
+
+  def _run(label, fn, *args, **kwargs):
+    t0 = time.time()
+    result = fn(*args, **kwargs)
+    step_times[label] = time.time() - t0
+    return result
+
+  layout_builder = self.resolve_dependencies(LayoutBuilder)
+  line_builder = self.resolve_dependencies(LineBuilder)
+  ocr_builder = self.resolve_dependencies(OcrBuilder)
+
+  document = _run(
+    "DocumentBuilder",
+    DocumentBuilder(self.config),
+    provider, layout_builder, line_builder, ocr_builder
+  )
+
+  _run("StructureBuilder", self.resolve_dependencies(StructureBuilder), document)
+
+  for processor in self.processor_list:
+    label = type(processor).__name__
+    _run(label, processor, document)
+
+  print("\n📊 Per-step timing breakdown:")
+  for label, secs in step_times.items():
+    if secs > 0.5:
+      print(f"  {label:45s} {secs:7.2f}s")
+  print()
+
+  return document
+
+PdfConverter.build_document = _timed_build_document
+# -----------------------------
 
 # Initialize converter with pre-loaded models
 converterP = PdfConverter(

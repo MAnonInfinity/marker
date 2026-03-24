@@ -44,7 +44,9 @@ images_dir = os.path.join(output_dir, "images")
 # ---------------------
 
 # Official Config Mapping
-options = {}
+options = {
+  "batch_multiplier": 4,
+}
 if PAGE_NUMBER is not None:
   options["page_range"] = str(PAGE_NUMBER - 1)
   md_filename = os.path.join(output_dir, f"{PAGE_NUMBER}.md")
